@@ -922,6 +922,7 @@ bops cmpFun = foldl' (flip addOperator) initOpTable builtinOps
                  , FInfix  (Just 6) "+"   (Just $ EBin Plus)  AssocLeft
                  , FInfix  (Just 5) "mod" (Just $ EBin Mod)   AssocLeft -- Haskell gives mod 7
                  , FInfix  (Just 9) "."   applyCompose        AssocRight
+                 , FInfix  (Just 4) "=="  (Just $ PAtom Eq)   AssocNone
                  ]
     applyCompose :: Maybe (Expr -> Expr -> Expr)
     applyCompose = (\f x y -> f `eApps` [x,y]) <$> cmpFun
