@@ -72,7 +72,7 @@ set  = "LSet"
 map  = "Map"
 
 emp, sng, add, cup, cap, mem, dif, sub, com, sel, sto, mcup, mdef, mprj :: Raw
-mToSet, mshift, mmax, mmin :: Raw
+mToSet, mshift, mmax, mmin, mnonnegativeDomain :: Raw
 emp   = "smt_set_emp"
 sng   = "smt_set_sng"
 add   = "smt_set_add"
@@ -91,7 +91,7 @@ mdef  = "smt_map_def"
 mprj  = "smt_map_prj"
 mshift = "smt_map_shift"
 mToSet = "smt_map_to_set"
-
+mnonnegativeDomain = "smt_map_nonnegative_domain"
 
 setEmpty, setEmp, setCap, setSub, setAdd, setMem, setCom, setCup :: Symbol
 setDif, setSng :: Symbol
@@ -107,7 +107,7 @@ setDif   = "Set_dif"
 setSng   = "Set_sng"
 
 mapSel, mapSto, mapCup, mapDef, mapPrj, mapToSet :: Symbol
-mapMax, mapMin, mapShift :: Symbol
+mapMax, mapMin, mapShift, mapNonnegativeDomain :: Symbol
 mapSel   = "Map_select"
 mapSto   = "Map_store"
 mapCup   = "Map_union"
@@ -117,6 +117,7 @@ mapDef   = "Map_default"
 mapPrj   = "Map_project"
 mapShift = "Map_shift" -- See [Map key shift]
 mapToSet = "Map_to_set"
+mapNonnegativeDomain = "Map_nonnegative_domain" -- See [Map nonnegative domain]
 
 -- [Interaction between Map and Set]
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -150,6 +151,12 @@ mapToSet = "Map_to_set"
 -- Functions mapMax and mapMin: Union two maps, combining the elements by
 -- taking either the greatest (mapMax) or the least (mapMin) of them.
 --   mapMax, mapMin : Map v Int -> Map v Int -> Map v Int
+--
+-- [Map nonnegative domain]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- Function mapNonnegativeDomain: Is there any negative keys whose element
+-- is a non-zero value. Type signature:
+--   mapNonnegativeDomain : Map Int Int -> Bool
 
 strLen, strSubstr, strConcat :: (IsString a) => a -- Symbol
 strLen    = "strLen"
@@ -280,6 +287,13 @@ z3Preamble u
         [("n", "Int"),("m", bb map)]
         (bb map)
         "(lambda ((i Int)) (select m (- i n)))"
+    , bFun mnonnegativeDomain -- See [Map nonnegative domain]
+        [("m", bb map)]
+        "Bool"
+        ( key2 "="
+          "(lambda ((i Int)) (or (>= i 0) (= 0 (select m i))))"
+          (parens (key "as const" (bb set) <+> "true"))
+        )
     , bFun mdef
         [("v", bb elt)]
         (bb map)
@@ -476,6 +490,7 @@ interpSymbols =
   , interpSym mapPrj   mprj  mapPrjSort
   , interpSym mapShift mshift mapShiftSort
   , interpSym mapToSet mToSet mapToSetSort
+  , interpSym mapNonnegativeDomain mnonnegativeDomain mapNonnegativeDomainSort
   , interpSym bvOrName "bvor"   bvBopSort
   , interpSym bvAndName "bvand" bvBopSort
   , interpSym strLen    strLen    strLenSort
@@ -509,7 +524,7 @@ interpSymbols =
                                          (mapSort (FVar 0) (FVar 1))
     mapDefSort = FAbs 0 $ FAbs 1 $ FFunc (FVar 1)
                                          (mapSort (FVar 0) (FVar 1))
-
+    mapNonnegativeDomainSort = FFunc (mapSort intSort intSort) boolSort
     bvBopSort  = FFunc bitVecSort $ FFunc bitVecSort bitVecSort
 
 interpSym :: Symbol -> Raw -> Sort -> (Symbol, TheorySymbol)
