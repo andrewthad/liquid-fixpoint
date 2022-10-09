@@ -72,7 +72,7 @@ set  = "LSet"
 map  = "Map"
 
 emp, sng, add, cup, cap, mem, dif, sub, com, sel, sto, mcup, mdef, mprj :: Raw
-mToSet, mshift, mmax, mmin, mnonnegativeDomain :: Raw
+mToSet, mshift, mmax, mmin, mnonnegativeDomain, sshift, srestrictGt :: Raw
 emp   = "smt_set_emp"
 sng   = "smt_set_sng"
 add   = "smt_set_add"
@@ -92,9 +92,12 @@ mprj  = "smt_map_prj"
 mshift = "smt_map_shift"
 mToSet = "smt_map_to_set"
 mnonnegativeDomain = "smt_map_nonnegative_domain"
+sshift = "smt_set_shift"
+srestrictGt = "smt_restrict_gt"
 
 setEmpty, setEmp, setCap, setSub, setAdd, setMem, setCom, setCup :: Symbol
 setDif, setSng :: Symbol
+setShift, setRestrictGt :: Symbol
 setEmpty = "Set_empty"
 setEmp   = "Set_emp"
 setCap   = "Set_cap"
@@ -105,6 +108,8 @@ setCom   = "Set_com"
 setCup   = "Set_cup"
 setDif   = "Set_dif"
 setSng   = "Set_sng"
+setShift = "Set_shift" -- See [Set shift]
+setRestrictGt = "Set_restrict_gt" -- [Set restrict gt]
 
 mapSel, mapSto, mapCup, mapDef, mapPrj, mapToSet :: Symbol
 mapMax, mapMin, mapShift, mapNonnegativeDomain :: Symbol
@@ -157,6 +162,20 @@ mapNonnegativeDomain = "Map_nonnegative_domain" -- See [Map nonnegative domain]
 -- Function mapNonnegativeDomain: Is there any negative keys whose element
 -- is a non-zero value. Type signature:
 --   mapNonnegativeDomain : Map Int Int -> Bool
+--
+-- [Set restrict gt]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- Function setRestrictGt. Type signature:
+--   setRestrictGt : v -> Set v -> Set v
+-- Returns a subset containing only elements greater than the argument.
+--
+-- [Set shift]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- Function setShift. Type signature:
+--   setShift : Int -> Set Int -> Set Int
+-- Add a number to every element in the set. For example:
+--   setShift 5 {10,11,12} ==> {15,16,17}
+--   setShift (-4) {0,5} ==> {-4,1}
 
 strLen, strSubstr, strConcat :: (IsString a) => a -- Symbol
 strLen    = "strLen"
@@ -287,6 +306,14 @@ z3Preamble u
         [("n", "Int"),("m", bb map)]
         (bb map)
         "(lambda ((i Int)) (select m (- i n)))"
+    , bFun sshift -- See [Set key shift]
+        [("n", "Int"),("s", bb set)]
+        (bb set)
+        "(lambda ((i Int)) (select s (- i n)))"
+    , bFun srestrictGt -- See [Set restrict gt]
+        [("v", bb elt),("s", bb set)]
+        (bb set)
+        "(lambda ((i Int)) (ite (> i v) (select s i) false))"
     , bFun mnonnegativeDomain -- See [Map nonnegative domain]
         [("m", bb map)]
         "Bool"
@@ -481,6 +508,8 @@ interpSymbols =
   , interpSym setDif   dif   setBopSort
   , interpSym setSub   sub   setCmpSort
   , interpSym setCom   com   setCmpSort
+  , interpSym setShift sshift setShiftSort
+  , interpSym setRestrictGt srestrictGt setRestrictGtSort
   , interpSym mapSel   sel   mapSelSort
   , interpSym mapSto   sto   mapStoSort
   , interpSym mapCup   mcup  mapCupSort
@@ -504,6 +533,8 @@ interpSymbols =
     setBopSort = FAbs 0 $ FFunc (setSort $ FVar 0) $ FFunc (setSort $ FVar 0) (setSort $ FVar 0)
     setMemSort = FAbs 0 $ FFunc (FVar 0) $ FFunc (setSort $ FVar 0) boolSort
     setCmpSort = FAbs 0 $ FFunc (setSort $ FVar 0) $ FFunc (setSort $ FVar 0) boolSort
+    setShiftSort = FFunc intSort $ FFunc (setSort intSort) (setSort intSort)
+    setRestrictGtSort = FAbs 0 $ FFunc (FVar 0) $ FFunc (setSort (FVar 0)) (setSort (FVar 0))
     mapSelSort = FAbs 0 $ FAbs 1 $ FFunc (mapSort (FVar 0) (FVar 1))
                                  $ FFunc (FVar 0) (FVar 1)
     mapCupSort = FAbs 0          $ FFunc (mapSort (FVar 0) intSort)
