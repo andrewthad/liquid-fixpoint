@@ -297,11 +297,11 @@ z3Preamble u
     , bFun mmax -- See [Map max and min]
         [("m1", bb map),("m2", bb map)]
         (bb map)
-        "(lambda ((i Int)) (ite (> (select m1 i) (select m2 i)) (select m1 i) (select m2 i)))"
+        "((_ map (ite (Bool Int Int) (Int))) ((_ map (> (Int Int) (Bool))) m1 m2) m1 m2)"
     , bFun mmin -- See [Map max and min]
         [("m1", bb map),("m2", bb map)]
         (bb map)
-        "(lambda ((i Int)) (ite (< (select m1 i) (select m2 i)) (select m1 i) (select m2 i)))"
+        "((_ map (ite (Bool Int Int) (Int))) ((_ map (< (Int Int) (Bool))) m1 m2) m1 m2)"
     , bFun mshift -- See [Map key shift]
         [("n", "Int"),("m", bb map)]
         (bb map)
